@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مديونيات العملاء</title>
+<meta name="theme-color" content="#1d4ed8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المديونيات">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mut:#6b7280;--bd:#e5e7eb;--debt:#c0392b;--pay:#1e8e5a;--pri:#1d4ed8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1c2127;--tx:#eef1f5;--mut:#9aa4b2;--bd:#2c343d;--debt:#ff7b6b;--pay:#4cd08f;--pri:#6b9bff}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1c2127;--tx:#eef1f5;--mut:#9aa4b2;--bd:#2c343d;--debt:#ff7b6b;--pay:#4cd08f;--pri:#6b9bff}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;font-size:16px;padding-bottom:90px}
+.top{background:var(--pri);color:#fff;padding:18px 16px 16px}
+.top small{opacity:.85}
+.top .total{font-size:30px;font-weight:700;margin-top:2px}
+.wrap{padding:12px;max-width:640px;margin:0 auto}
+input,select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font-size:16px;font-family:inherit}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.card b{font-size:17px}.card .ph{color:var(--mut);font-size:13px}
+.bal{font-weight:700;font-size:18px}.bal.d{color:var(--debt)}.bal.z{color:var(--pay)}
+.fab{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:16px;right:16px;max-width:608px;margin:auto;padding:15px;border:0;border-radius:14px;background:var(--pri);color:#fff;font-size:17px;font-weight:700;font-family:inherit}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:20}
+.ov.on{display:flex}
+.sheet{background:var(--bg);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+.sheet h2{margin:0 0 10px;font-size:19px}
+.row{display:flex;gap:8px;margin-top:10px}
+.btn{flex:1;padding:13px;border:0;border-radius:10px;font-size:16px;font-weight:700;color:#fff;font-family:inherit}
+.b-d{background:var(--debt)}.b-p{background:var(--pay)}.b-g{background:var(--mut)}.b-l{background:transparent;color:var(--debt);border:1px solid var(--bd)}
+label{display:block;margin-top:10px;font-size:14px;color:var(--mut)}
+.tx{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--bd);font-size:15px}
+.tx small{color:var(--mut);display:block}
+.tx .a.d{color:var(--debt)}.tx .a.p{color:var(--pay)}.tx .a{font-weight:700}
+.empty{text-align:center;color:var(--mut);margin-top:40px}
+.note{font-size:12px;color:var(--mut);text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="top"><small>إجمالي المديونيات المستحقة</small><div class="total" id="total">0</div></div>
+<div class="wrap">
+  <input id="q" placeholder="ابحث عن عميل…" oninput="render()">
+  <div id="list"></div>
+  <div class="note" id="mode"></div>
+  <div class="row" style="margin-top:18px"><button class="btn b-g" onclick="backup()">حفظ نسخة احتياطية</button><button class="btn b-g" onclick="document.getElementById('rf').click()">استرجاع نسخة</button></div>
+  <input type="file" id="rf" accept=".txt,.json,text/plain" style="display:none" onchange="restore(this)">
+</div>
+<button class="fab" onclick="openCust()">+ إضافة عميل</button>
+
+<div class="ov" id="ovC"><div class="sheet">
+  <h2>عميل جديد</h2>
+  <label>الاسم</label><input id="cn">
+  <label>رقم الهاتف (اختياري)</label><input id="cp" type="tel" inputmode="tel">
+  <label>مديونية سابقة (اختياري)</label><input id="co" type="number" inputmode="decimal" min="0">
+  <div class="row"><button class="btn b-g" onclick="closeAll()">إلغاء</button><button class="btn b-p" onclick="saveCust()">حفظ</button></div>
+</div></div>
+
+<div class="ov" id="ovD"><div class="sheet">
+  <h2 id="dn"></h2><div class="ph" id="dp" style="color:var(--mut)"></div>
+  <div class="bal" id="db" style="font-size:26px;margin:8px 0"></div>
+  <div class="row"><button class="btn b-d" onclick="openTx('debt')">+ دين جديد</button><button class="btn b-p" onclick="openTx('pay')">تسجيل دفعة</button></div>
+  <h2 style="margin-top:18px;font-size:16px">السجل</h2>
+  <div id="hist"></div>
+  <div class="row"><button class="btn b-g" onclick="closeAll()">إغلاق</button><button class="btn b-l" onclick="delCust()">حذف العميل</button></div>
+</div></div>
+
+<div class="ov" id="ovT"><div class="sheet">
+  <h2 id="tt"></h2>
+  <label>المبلغ</label><input id="ta" type="number" inputmode="decimal" min="0">
+  <label>ملاحظة (اختياري)</label><input id="tn">
+  <div class="row"><button class="btn b-g" onclick="backD()">رجوع</button><button class="btn b-p" id="tok" onclick="saveTx()">حفظ</button></div>
+</div></div>
+
+<script>
+let C = {}, cur = null, kind = 'debt', dbc = null, key = 'debts_v1';
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString('en-US', {maximumFractionDigits: 2});
+const bal = c => (c.txs || []).reduce((s, t) => s + (t.k === 'debt' ? t.a : -t.a), 0);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function persist(id) {
+  if (dbc) {
+    const p = C[id] ? dbc.doc(id).set(C[id]) : dbc.doc(id).delete();
+    p.catch(() => alert('تعذّر الحفظ، حاول مرة أخرى'));
+  } else {
+    try { localStorage.setItem(key, JSON.stringify(C)); } catch (e) {}
+  }
+}
+function render() {
+  const q = $('q').value.trim();
+  const ids = Object.keys(C).filter(i => !q || C[i].name.includes(q) || (C[i].phone || '').includes(q))
+    .sort((a, b) => bal(C[b]) - bal(C[a]));
+  $('total').textContent = fmt(Object.values(C).reduce((s, c) => s + Math.max(bal(c), 0), 0));
+  $('list').innerHTML = ids.length ? ids.map(i => {
+    const b = bal(C[i]);
+    return `<div class="card" onclick="openDet('${i}')"><div><b>${esc(C[i].name)}</b><div class="ph">${esc(C[i].phone || '')}</div></div><div class="bal ${b > 0 ? 'd' : 'z'}">${fmt(b)}</div></div>`;
+  }).join('') : '<div class="empty">لا يوجد عملاء بعد. اضغط «إضافة عميل» للبدء.</div>';
+  if (cur && C[cur]) fillDet();
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m])); }
+function closeAll() { document.querySelectorAll('.ov').forEach(o => o.classList.remove('on')); cur = null; }
+function show(id) { document.querySelectorAll('.ov').forEach(o => o.classList.remove('on')); $(id).classList.add('on'); }
+function openCust() { $('cn').value = $('cp').value = $('co').value = ''; show('ovC'); }
+function saveCust() {
+  const n = $('cn').value.trim(); if (!n) return alert('اكتب اسم العميل');
+  const id = uid(), o = parseFloat($('co').value) || 0;
+  C[id] = {name: n, phone: $('cp').value.trim(), txs: o > 0 ? [{id: uid(), k: 'debt', a: o, n: 'مديونية سابقة', d: Date.now()}] : []};
+  persist(id); closeAll(); render();
+}
+function openDet(i) { cur = i; fillDet(); show('ovD'); }
+function fillDet() {
+  const c = C[cur], b = bal(c);
+  $('dn').textContent = c.name; $('dp').textContent = c.phone || '';
+  $('db').textContent = 'المتبقي: ' + fmt(b); $('db').className = 'bal ' + (b > 0 ? 'd' : 'z');
+  $('hist').innerHTML = (c.txs || []).slice().reverse().map(t =>
+    `<div class="tx"><div>${t.k === 'debt' ? 'دين' : 'دفعة'}${t.n ? ' — ' + esc(t.n) : ''}<small>${new Date(t.d).toLocaleDateString('ar-EG')}</small></div><div class="a ${t.k === 'debt' ? 'd' : 'p'}">${t.k === 'debt' ? '+' : '−'}${fmt(t.a)}</div></div>`
+  ).join('') || '<div class="empty" style="margin:14px 0">لا توجد حركات</div>';
+}
+function openTx(k) { kind = k; $('tt').textContent = k === 'debt' ? 'دين جديد على ' + C[cur].name : 'دفعة من ' + C[cur].name; $('ta').value = $('tn').value = ''; show('ovT'); setTimeout(() => $('ta').focus(), 100); }
+function backD() { show('ovD'); }
+function saveTx() {
+  const a = parseFloat($('ta').value); if (!(a > 0)) return alert('اكتب مبلغاً صحيحاً');
+  if (kind === 'pay' && a > bal(C[cur]) && !confirm('المبلغ أكبر من المتبقي. هل تريد المتابعة؟')) return;
+  C[cur].txs.push({id: uid(), k: kind, a, n: $('tn').value.trim(), d: Date.now()});
+  persist(cur); render(); show('ovD');
+}
+function delCust() {
+  if (!confirm('حذف العميل وكل سجلاته نهائياً؟')) return;
+  const i = cur; delete C[i]; persist(i); closeAll(); render();
+}
+
+async function backup() {
+  try {
+    const d = window.claude ? await claude.use('downloads') : null;
+    const fn = 'debts-backup-' + new Date().toISOString().slice(0, 10) + '.txt';
+    if (d) await d.save({filename: fn, data: JSON.stringify(C)});
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(C)], {type: 'text/plain'})); a.download = fn; document.body.appendChild(a); a.click(); a.remove(); }
+  } catch (e) { if (!e || e.code !== 'declined') alert('تعذّر حفظ النسخة'); }
+}
+function restore(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const o = JSON.parse(r.result);
+      if (!o || typeof o !== 'object') throw 0;
+      const n = Object.keys(o).length;
+      if (!confirm('سيتم استرجاع ' + n + ' عميل ودمجهم مع الموجودين. متابعة؟')) return;
+      Object.keys(o).forEach(i => { if (o[i] && o[i].name) { C[i] = o[i]; persist(i); } });
+      render();
+    } catch (e) { alert('الملف غير صالح'); }
+    inp.value = '';
+  };
+  r.readAsText(f);
+}
+
+(async function init() {
+  $('mode').textContent = '';
+  try {
+    const u = window.claude && await claude.use('user');
+    const db = null;
+    const id = u && await u.id();
+    if (db && id) {
+      dbc = db.collection('data/users/' + id + '/customers');
+      dbc.onSnapshot(s => { C = {}; s.docs.forEach(d => C[d.id] = d.data()); render(); }, () => {});
+      $('mode').textContent = 'البيانات محفوظة بأمان في حسابك';
+      return;
+    }
+  } catch (e) {}
+  try { C = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { C = {}; }
+  $('mode').textContent = 'البيانات محفوظة على هذا الجهاز فقط';
+  render();
+})();
+render();
+</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
+</body>
+</html>
